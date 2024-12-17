@@ -59,13 +59,22 @@ function scrollToBottom() {
   chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
-// Simulate assistant response
-function getAssistantResponse(userMessage) {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve("This is a simulated response. You said: " + userMessage);
-    }, 1500);
+// Fetch assistant response from the backend
+async function getAssistantResponse(userMessage) {
+  const response = await fetch("http://localhost:8000/chat", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ message: userMessage }),
   });
+
+  if (!response.ok) {
+    throw new Error("Network response was not ok");
+  }
+
+  const data = await response.json();
+  return data.reply;
 }
 
 // Handle form submission
@@ -80,7 +89,15 @@ messageForm.addEventListener("submit", async (e) => {
   scrollToBottom();
 
   // Assistant response
-  const response = await getAssistantResponse(message);
-  chatContainer.appendChild(createMessageBubble(response, "assistant"));
-  scrollToBottom();
+  try {
+    const response = await getAssistantResponse(message);
+    chatContainer.appendChild(createMessageBubble(response, "assistant"));
+    scrollToBottom();
+  } catch (error) {
+    console.error("Error fetching assistant response:", error);
+    chatContainer.appendChild(
+      createMessageBubble("Error fetching assistant response.", "assistant")
+    );
+    scrollToBottom();
+  }
 });
