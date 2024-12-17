@@ -106,3 +106,5 @@ messageForm.addEventListener("submit", async (e) => {
     scrollToBottom();
   }
 });
+
+console.log(BASE_URL);
