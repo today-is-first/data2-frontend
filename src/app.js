@@ -1,6 +1,7 @@
 const chatContainer = document.getElementById("chat-container");
 const messageForm = document.getElementById("message-form");
 const userInput = document.getElementById("user-input");
+const apiSelector = document.getElementById("api-selector");
 
 // Create a message bubble
 function createMessageBubble(content, sender = "user") {
@@ -59,9 +60,15 @@ function scrollToBottom() {
   chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
-// Fetch assistant response from the backend
+// Fetch assistant response from the selected backend endpoint
 async function getAssistantResponse(userMessage) {
-  const response = await fetch("http://localhost:8000/chat", {
+  const mode = apiSelector.value;
+  const url =
+    mode === "assistant"
+      ? "http://localhost:8000/assistant"
+      : "http://localhost:8000/chat";
+
+  const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -96,7 +103,10 @@ messageForm.addEventListener("submit", async (e) => {
   } catch (error) {
     console.error("Error fetching assistant response:", error);
     chatContainer.appendChild(
-      createMessageBubble("Error fetching assistant response.", "assistant")
+      createMessageBubble(
+        "Error fetching response. Check console.",
+        "assistant"
+      )
     );
     scrollToBottom();
   }
