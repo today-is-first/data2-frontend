@@ -3,6 +3,7 @@ import 'regenerator-runtime/runtime'; // if needed for async/await in older brow
 const chatContainer = document.getElementById('chat-container');
 const messageForm = document.getElementById('message-form');
 const userInput = document.getElementById('user-input');
+const apiSelector = document.getElementById('api-selector');
 const newChatBtn = document.getElementById('new-chat-btn');
 
 const BASE_URL = process.env.API_ENDPOINT;
@@ -98,8 +99,13 @@ function createMessageBubble(content, sender = 'user') {
     'text-white'
   );
 
-  avatar.classList.add('bg-gradient-to-br', 'from-blue-500', 'to-blue-700');
-  avatar.textContent = 'U';
+  if (sender === 'assistant') {
+    avatar.classList.add('bg-gradient-to-br', 'from-green-400', 'to-green-600');
+    avatar.textContent = 'A';
+  } else {
+    avatar.classList.add('bg-gradient-to-br', 'from-blue-500', 'to-blue-700');
+    avatar.textContent = 'U';
+  }
 
   const bubble = document.createElement('div');
   bubble.classList.add(
@@ -112,7 +118,11 @@ function createMessageBubble(content, sender = 'user') {
     'shadow-sm'
   );
 
-  bubble.classList.add('bg-blue-600', 'text-white');
+  if (sender === 'assistant') {
+    bubble.classList.add('bg-gray-200', 'text-gray-900');
+  } else {
+    bubble.classList.add('bg-blue-600', 'text-white');
+  }
 
   bubble.textContent = content;
 
@@ -126,15 +136,28 @@ function scrollToBottom() {
 }
 
 async function getAssistantResponse(userMessage) {
-  // assistant 모드 완전 제거, naive 모드만 남김
-  const allMsgs = await getAllMessages();
-  const messagesForAPI = [
-    { role: 'system', content: 'You are a helpful assistant.' },
-    ...allMsgs.map((m) => ({ role: m.role, content: m.content })),
-    { role: 'user', content: userMessage },
-  ];
-  const payload = { messages: messagesForAPI };
-  const url = `${BASE_URL}/chat`;
+  const mode = apiSelector.value;
+  let url;
+  let payload;
+
+  if (mode === 'assistant') {
+    const thread_id = await getMetadata('thread_id');
+    payload = { message: userMessage };
+    if (thread_id) {
+      payload.thread_id = thread_id;
+    }
+    url = `${BASE_URL}/assistant`;
+  } else {
+    // Naive mode
+    const allMsgs = await getAllMessages();
+    const messagesForAPI = [
+      { role: 'system', content: 'You are a helpful assistant.' },
+      ...allMsgs.map((m) => ({ role: m.role, content: m.content })),
+      { role: 'user', content: userMessage },
+    ];
+    payload = { messages: messagesForAPI };
+    url = `${BASE_URL}/chat`;
+  }
 
   const response = await fetch(url, {
     method: 'POST',
@@ -149,6 +172,13 @@ async function getAssistantResponse(userMessage) {
   }
 
   const data = await response.json();
+
+  if (mode === 'assistant' && data.thread_id) {
+    const existingThreadId = await getMetadata('thread_id');
+    if (!existingThreadId) {
+      await saveMetadata('thread_id', data.thread_id);
+    }
+  }
 
   return data.reply;
 }
